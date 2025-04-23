@@ -77,17 +77,8 @@ cat << "EOF"
                                                                 
 EOF
 
-while true; do
-    echo -en $GREEN_TEXT
-    read -p ">> Would you like to connect to the Testnet? [Y/n] " yn
-    echo -en $RESET_TEXT
-    yn=${yn:-Y}  # Default to "Y" if the user presses Enter
-    case $yn in
-        [Yy]*)  CONNECT_TO_TESTNET=True && break ;;
-        [Nn]*)  CONNECT_TO_TESTNET=False && break ;;
-        *)  echo ">>> Please answer yes or no." ;;
-    esac
-done
+# 直接设置CONNECT_TO_TESTNET为True，不再询问
+CONNECT_TO_TESTNET=True
 
 if [ "$CONNECT_TO_TESTNET" = "True" ]; then
     # Run modal_login server.
@@ -185,39 +176,40 @@ fi
 
 echo_green ">> Done!"
 
-HF_TOKEN=${HF_TOKEN:-""}
-if [ -n "${HF_TOKEN}" ]; then # Check if HF_TOKEN is already set and use if so. Else give user a prompt to choose.
-    HUGGINGFACE_ACCESS_TOKEN=${HF_TOKEN}
-else
-    echo -en $GREEN_TEXT
-    read -p ">> Would you like to push models you train in the RL swarm to the Hugging Face Hub? [y/N] " yn
-    echo -en $RESET_TEXT
-    yn=${yn:-N} # Default to "N" if the user presses Enter
-    case $yn in
-        [Yy]*) read -p "Enter your Hugging Face access token: " HUGGINGFACE_ACCESS_TOKEN ;;
-        [Nn]*) HUGGINGFACE_ACCESS_TOKEN="None" ;;
-        *) echo ">>> No answer was given, so NO models will be pushed to Hugging Face Hub" && HUGGINGFACE_ACCESS_TOKEN="None" ;;
-    esac
+# 从环境变量读取HF_TOKEN，如果未设置则报错退出
+if [ -z "${HF_TOKEN:-}" ]; then
+    echo "错误: 环境变量HF_TOKEN未设置。请设置HF_TOKEN环境变量后重试。"
+    exit 1
 fi
+HUGGINGFACE_ACCESS_TOKEN=${HF_TOKEN}
 
 echo_green ">> Good luck in the swarm!"
 echo_blue ">> Post about rl-swarm on X/twitter! --> https://tinyurl.com/swarmtweet"
 echo_blue ">> And remember to star the repo on GitHub! --> https://github.com/gensyn-ai/rl-swarm"
 
-if [ -n "$ORG_ID" ]; then
-    python -m hivemind_exp.gsm8k.train_single_gpu \
-        --hf_token "$HUGGINGFACE_ACCESS_TOKEN" \
-        --identity_path "$IDENTITY_PATH" \
-        --modal_org_id "$ORG_ID" \
-        --config "$CONFIG_PATH"
-else
-    python -m hivemind_exp.gsm8k.train_single_gpu \
-        --hf_token "$HUGGINGFACE_ACCESS_TOKEN" \
-        --identity_path "$IDENTITY_PATH" \
-        --public_maddr "$PUB_MULTI_ADDRS" \
-        --initial_peers "$PEER_MULTI_ADDRS" \
-        --host_maddr "$HOST_MULTI_ADDRS" \
-        --config "$CONFIG_PATH"
-fi
+# 添加自动重启功能
+while true; do
+    if [ -n "$ORG_ID" ]; then
+        echo_green ">> 启动训练..."
+        python -m hivemind_exp.gsm8k.train_single_gpu \
+            --hf_token "$HUGGINGFACE_ACCESS_TOKEN" \
+            --identity_path "$IDENTITY_PATH" \
+            --modal_org_id "$ORG_ID" \
+            --config "$CONFIG_PATH" || { echo_green ">> 训练异常退出，5秒后自动重启..."; sleep 5; continue; }
+    else
+        echo_green ">> 启动训练..."
+        python -m hivemind_exp.gsm8k.train_single_gpu \
+            --hf_token "$HUGGINGFACE_ACCESS_TOKEN" \
+            --identity_path "$IDENTITY_PATH" \
+            --public_maddr "$PUB_MULTI_ADDRS" \
+            --initial_peers "$PEER_MULTI_ADDRS" \
+            --host_maddr "$HOST_MULTI_ADDRS" \
+            --config "$CONFIG_PATH" || { echo_green ">> 训练异常退出，5秒后自动重启..."; sleep 5; continue; }
+    fi
+    
+    # 如果程序正常退出（没有错误），则跳出循环
+    echo_green ">> 程序正常退出"
+    break
+done
 
 wait  # Keep script running until Ctrl+C
