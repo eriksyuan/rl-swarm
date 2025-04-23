@@ -191,6 +191,10 @@ echo_blue ">> And remember to star the repo on GitHub! --> https://github.com/ge
 while true; do
     if [ -n "$ORG_ID" ]; then
         echo_green ">> 启动训练..."
+        
+        # 设置Hugging Face环境变量以优化上传
+        export HF_HUB_ENABLE_HF_TRANSFER=1  
+        
         python -m hivemind_exp.gsm8k.train_single_gpu \
             --hf_token "$HUGGINGFACE_ACCESS_TOKEN" \
             --identity_path "$IDENTITY_PATH" \
@@ -198,6 +202,10 @@ while true; do
             --config "$CONFIG_PATH" || { echo_green ">> 训练异常退出，5秒后自动重启..."; sleep 5; continue; }
     else
         echo_green ">> 启动训练..."
+        
+        # 设置Hugging Face环境变量以优化上传
+        export HF_HUB_ENABLE_HF_TRANSFER=1  # 使用HF专用传输协议
+        
         python -m hivemind_exp.gsm8k.train_single_gpu \
             --hf_token "$HUGGINGFACE_ACCESS_TOKEN" \
             --identity_path "$IDENTITY_PATH" \
