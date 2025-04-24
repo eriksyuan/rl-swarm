@@ -176,12 +176,19 @@ fi
 
 echo_green ">> Done!"
 
-# 从环境变量读取HF_TOKEN，如果未设置则报错退出
-if [ -z "${HF_TOKEN:-}" ]; then
-    echo "错误: 环境变量HF_TOKEN未设置。请设置HF_TOKEN环境变量后重试。"
-    exit 1
-fi
-HUGGINGFACE_ACCESS_TOKEN=${HF_TOKEN}
+
+# 检查HF_TOKEN环境变量是否存在
+if [ -z "$HF_TOKEN" ]; then
+    # 如果HF_TOKEN不存在，设置HUGGINGFACE_ACCESS_TOKEN为"None"
+    export HUGGINGFACE_ACCESS_TOKEN="None"
+    echo "HF_TOKEN is not set, using None"
+else
+    # 如果HF_TOKEN存在，将其值赋给HUGGINGFACE_ACCESS_TOKEN
+    export HUGGINGFACE_ACCESS_TOKEN=$HF_TOKEN
+    echo "HF_TOKEN is set, using $HF_TOKEN"
+fi 
+
+
 
 echo_green ">> Good luck in the swarm!"
 echo_blue ">> Post about rl-swarm on X/twitter! --> https://tinyurl.com/swarmtweet"
