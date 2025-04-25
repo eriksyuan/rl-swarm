@@ -176,19 +176,7 @@ fi
 
 echo_green ">> Done!"
 
-
-# 检查HF_TOKEN环境变量是否存在
-if [ -z "$HF_TOKEN" ]; then
-    # 如果HF_TOKEN不存在，设置HUGGINGFACE_ACCESS_TOKEN为"None"
-    export HUGGINGFACE_ACCESS_TOKEN="None"
-    echo "HF_TOKEN is not set, using None"
-else
-    # 如果HF_TOKEN存在，将其值赋给HUGGINGFACE_ACCESS_TOKEN
-    export HUGGINGFACE_ACCESS_TOKEN=$HF_TOKEN
-    echo "HF_TOKEN is set, using $HF_TOKEN"
-fi 
-
-
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
 
 echo_green ">> Good luck in the swarm!"
 echo_blue ">> Post about rl-swarm on X/twitter! --> https://tinyurl.com/swarmtweet"
@@ -203,7 +191,7 @@ while true; do
         export HF_HUB_ENABLE_HF_TRANSFER=1  
         
         python -m hivemind_exp.gsm8k.train_single_gpu \
-            --hf_token "$HUGGINGFACE_ACCESS_TOKEN" \
+            --hf_token "None" \
             --identity_path "$IDENTITY_PATH" \
             --modal_org_id "$ORG_ID" \
             --config "$CONFIG_PATH" || { echo_green ">> 训练异常退出，5秒后自动重启..."; sleep 5; continue; }
@@ -214,7 +202,7 @@ while true; do
         export HF_HUB_ENABLE_HF_TRANSFER=1  # 使用HF专用传输协议
         
         python -m hivemind_exp.gsm8k.train_single_gpu \
-            --hf_token "$HUGGINGFACE_ACCESS_TOKEN" \
+            --hf_token "None" \
             --identity_path "$IDENTITY_PATH" \
             --public_maddr "$PUB_MULTI_ADDRS" \
             --initial_peers "$PEER_MULTI_ADDRS" \
