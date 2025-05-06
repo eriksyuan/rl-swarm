@@ -30,6 +30,9 @@ HOST_MULTI_ADDRS=${HOST_MULTI_ADDRS:-$DEFAULT_HOST_MULTI_ADDRS}
 DEFAULT_IDENTITY_PATH="$ROOT"/swarm.pem
 IDENTITY_PATH=${IDENTITY_PATH:-$DEFAULT_IDENTITY_PATH}
 
+SMALL_SWARM_CONTRACT="0x69C6e1D608ec64885E7b185d39b04B491a71768C"
+BIG_SWARM_CONTRACT="0x6947c6E196a48B77eFa9331EC1E3e45f3Ee5Fd58"
+
 # Will ignore any visible GPUs if set.
 CPU_ONLY=${CPU_ONLY:-""}
 
@@ -67,28 +70,41 @@ trap cleanup EXIT
 
 echo -e "\033[38;5;224m"
 cat << "EOF"
-    ██████  ██            ███████ ██     ██  █████  ██████  ███    ███ 
-    ██   ██ ██            ██      ██     ██ ██   ██ ██   ██ ████  ████ 
-    ██████  ██      █████ ███████ ██  █  ██ ███████ ██████  ██ ████ ██ 
-    ██   ██ ██                 ██ ██ ███ ██ ██   ██ ██   ██ ██  ██  ██ 
-    ██   ██ ███████       ███████  ███ ███  ██   ██ ██   ██ ██      ██ 
-    
-    From Gensyn  
-                                                                
+    ██████  ██            ███████ ██     ██  █████  ██████  ███    ███
+    ██   ██ ██            ██      ██     ██ ██   ██ ██   ██ ████  ████
+    ██████  ██      █████ ███████ ██  █  ██ ███████ ██████  ██ ████ ██
+    ██   ██ ██                 ██ ██ ███ ██ ██   ██ ██   ██ ██  ██  ██
+    ██   ██ ███████       ███████  ███ ███  ██   ██ ██   ██ ██      ██
+
+    From Gensyn
+
 EOF
 
 # 直接设置CONNECT_TO_TESTNET为True，不再询问
 CONNECT_TO_TESTNET=True
 
-if [ "$CONNECT_TO_TESTNET" = "True" ]; then
+# 设置swarm合约地址
+SWARM_CONTRACT="$SMALL_SWARM_CONTRACT"
+
+while true; do
+    echo -en $GREEN_TEXT
+    read -p ">> How many parameters (in billions)? [0.5, 1.5, 7, 32, 72] " pc
+    echo -en $RESET_TEXT
+    pc=${pc:-0.5}  # Default to "0.5" if the user presses Enter
+    case $pc in
+        0.5 | 1.5 | 7 | 32 | 72) PARAM_B=$pc && break ;;
+        *)  echo ">>> Please answer in [0.5, 1.5, 7, 32, 72]." ;;
+    esac
+done
+
+if [ "$CONNECT_TO_TESTNET" = true ]; then
     # Run modal_login server.
     echo "Please login to create an Ethereum Server Wallet"
     cd modal-login
     # Check if the yarn command exists; if not, install Yarn.
-    source ~/.bashrc
 
     # Node.js + NVM setup
-    if ! command -v node >/dev/null 2>&1; then
+    if ! command -v node > /dev/null 2>&1; then
         echo "Node.js not found. Installing NVM and latest Node.js..."
         export NVM_DIR="$HOME/.nvm"
         if [ ! -d "$NVM_DIR" ]; then
@@ -96,7 +112,7 @@ if [ "$CONNECT_TO_TESTNET" = "True" ]; then
         fi
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
         [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-       nvm install node
+        nvm install node
     else
         echo "Node.js is already installed: $(node -v)"
     fi
@@ -109,10 +125,9 @@ if [ "$CONNECT_TO_TESTNET" = "True" ]; then
             echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
             sudo apt update && sudo apt install -y yarn
         else
-            echo "Yarn is not installed. Installing Yarn..."
-            curl -o- -L https://yarnpkg.com/install.sh | sh
-            echo 'export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"' >> ~/.bashrc
-            source ~/.bashrc
+            echo "Yarn not found. Installing Yarn globally with npm (no profile edits)…"
+            # This lands in $NVM_DIR/versions/node/<ver>/bin which is already on PATH
+            npm install -g --silent yarn
         fi
     fi
     yarn install
@@ -121,14 +136,14 @@ if [ "$CONNECT_TO_TESTNET" = "True" ]; then
     SERVER_PID=$!  # Store the process ID
     echo "Started server process: $SERVER_PID"
     sleep 5
-    
+
     # Try to open the URL in the default browser
-    if open http://localhost:3000 2>/dev/null; then
+    if open http://localhost:3000 2> /dev/null; then
         echo_green ">> Successfully opened http://localhost:3000 in your default browser."
     else
         echo ">> Failed to open http://localhost:3000. Please open it manually."
     fi
-    
+
     cd ..
 
     echo_green ">> Waiting for modal userData.json to be created..."
@@ -152,26 +167,40 @@ if [ "$CONNECT_TO_TESTNET" = "True" ]; then
             sleep 5
         fi
     done
+
+    ENV_FILE="$ROOT"/modal-login/.env
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS version
+        sed -i '' "3s/.*/SMART_CONTRACT_ADDRESS=$SWARM_CONTRACT/" "$ENV_FILE"
+    else
+        # Linux version
+        sed -i "3s/.*/SMART_CONTRACT_ADDRESS=$SWARM_CONTRACT/" "$ENV_FILE"
+    fi
 fi
 
-pip_install() {
-    pip install --disable-pip-version-check -q -r "$1"
-}
-
 echo_green ">> Getting requirements..."
-pip_install "$ROOT"/requirements-hivemind.txt
-pip_install "$ROOT"/requirements.txt
 
-if ! command -v nvidia-smi &> /dev/null; then
-    # You don't have a NVIDIA GPU
-    CONFIG_PATH="$ROOT/hivemind_exp/configs/mac/grpo-qwen-2.5-0.5b-deepseek-r1.yaml"
-elif [ -n "$CPU_ONLY" ]; then
-    # ... or we don't want to use it
-    CONFIG_PATH="$ROOT/hivemind_exp/configs/mac/grpo-qwen-2.5-0.5b-deepseek-r1.yaml"
+pip install --upgrade pip
+if [ -n "$CPU_ONLY" ] || ! command -v nvidia-smi &> /dev/null; then
+    # CPU-only mode or no NVIDIA GPU found
+    pip install -r "$ROOT"/requirements-cpu.txt
+    CONFIG_PATH="$ROOT/hivemind_exp/configs/mac/grpo-qwen-2.5-0.5b-deepseek-r1.yaml" # TODO: Fix naming.
+    GAME="gsm8k"
 else
     # NVIDIA GPU found
-    pip_install "$ROOT"/requirements_gpu.txt
-    CONFIG_PATH="$ROOT/hivemind_exp/configs/gpu/grpo-qwen-2.5-0.5b-deepseek-r1.yaml"
+    pip install -r "$ROOT"/requirements-gpu.txt
+    pip install flash-attn --no-build-isolation
+
+    case "$PARAM_B" in
+        32 | 72) CONFIG_PATH="$ROOT/hivemind_exp/configs/gpu/grpo-qwen-2.5-${PARAM_B}b-bnb-4bit-deepseek-r1.yaml" && break ;;
+        0.5 | 1.5 | 7) CONFIG_PATH="$ROOT/hivemind_exp/configs/gpu/grpo-qwen-2.5-${PARAM_B}b-deepseek-r1.yaml" && break ;;
+        *)  echo ">>> Please answer in [0.5, 1.5, 7, 32, 72]." ;;
+    esac
+    if [ "$USE_BIG_SWARM" = true ]; then
+        GAME="dapo"
+    else
+        GAME="gsm8k"
+    fi
 fi
 
 echo_green ">> Done!"
@@ -194,6 +223,8 @@ while true; do
             --hf_token "None" \
             --identity_path "$IDENTITY_PATH" \
             --modal_org_id "$ORG_ID" \
+            --contract_address "$SWARM_CONTRACT" \
+            --game "$GAME" \
             --config "$CONFIG_PATH" || { echo_green ">> 训练异常退出，5秒后自动重启..."; sleep 5; continue; }
     else
         echo_green ">> 启动训练..."
@@ -207,6 +238,8 @@ while true; do
             --public_maddr "$PUB_MULTI_ADDRS" \
             --initial_peers "$PEER_MULTI_ADDRS" \
             --host_maddr "$HOST_MULTI_ADDRS" \
+            --contract_address "$SWARM_CONTRACT" \
+            --game "$GAME" \
             --config "$CONFIG_PATH" || { echo_green ">> 训练异常退出，5秒后自动重启..."; sleep 5; continue; }
     fi
     

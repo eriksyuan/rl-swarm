@@ -1,33 +1,56 @@
 # RL Swarm
 
-RL Swarm is an open source system for peer-to-peer reinforcement learning over the internet. Running a swarm node allows you to train your personal model against the swarm intelligence. Each swarm performs RL reasoning as a group, with a gossiping system (Hivemind) for collaborative improvement between models. You can also connect your node to the Gensyn Testnet, to receive an on-chain identity that tracks your progress over time.
+RL Swarm is a peer-to-peer system for reinforcement learning. It allows you to train a model collaboratively with other models in the swarm, leveraging their collective intelligence. It is open source and permissionless, meaning you can run it on a consumer laptop at home or on a powerful GPU in the cloud. You can also connect your model to the Gensyn Testnet, to receive an on-chain identity that tracks your progress over time.
 
-RL Swarm is fully open and permissionless, meaning you can run it on a basic consumer laptop at home or on a powerful GPU in the cloud. You can also experiment with different models to see which ones perform best.
+There are currently multiple swarms running on the Testnet, each training on a different data set. The current list of available models and swarms include:
+
+Models:
+   - Qwen 2.5 0.5B
+   - Qwen 2.5 1.5B
+   - Qwen 2.5 7B
+   - Qwen 2.5 32B (4 bit)
+   - Qwen 2.5 72B (4 bit)
+
+Swarms:
+   - Math (GSM8K dataset)
+   - Math Hard (DAPO-Math 17K dataset)
+
+Soon you will be able to create your own swarms with unique data sets, and eventually connect multiple swarms together to train powerful models across domains.
 
 ## Requirements
 
-Ensure that you are using a supported machine/device/environment:
+Your hardware requirements will vary depending on which swarm and model you choose.  Users with less powerful hardware should select a smaller model (e.g. Qwen 0.5B or 1.5B) and smaller dataset (GSM8K). Users with more powerful hardware can select a larger model (e.g. Qwen 7B, 32B or 72B) and larger dataset (DAPO-Math 17K).  The requirements for each are listed below:     
+
+**Small model (0.5B or 1.5B) + Math (GSM8K dataset)**
 
 - arm64 or x86 CPU with minimum 16gb ram (note that if you run other applications during training it might crash training).
+
 
 OR
 
 - CUDA devices (officially supported):
     - RTX 3090
-    - RTX 4070
     - RTX 4090
     - A100
     - H100
 
-WITH
+**Big model (7B, 32B or 72B) + Math Hard (DAPO-Math 17K dataset)**
 
--  Python >=3.10 (for Mac, you will likely need to upgrade)
+- Recommended:
+    - A100 (80GB) 
+    - H100 (80GB)
+
+
+
+***
+
+With either configuration, you will need Python >=3.10 (for Mac, you will likely need to upgrade).
 
 ## ⚠️ Please read before continuing ⚠️
 
 This software is **experimental** and provided as-is for users who are interested in using (or helping to develop) an early version of the Gensyn Protocol for training models.
 
-If you care a lot about on-chain participation, you **must** read the [Identity Management](#identity-management) section below.
+If you care about on-chain participation, you **must** read the [Identity Management](#identity-management) section below.
 
 If you encounter issues, please first check [Troubleshooting](#troubleshooting). If you cannot find a solution there, please check if there is an open (or closed) [Issue](../../issues). If there is no relevant issue, please file one and include 1) all relevant logs, 2) information about your device (e.g. which GPU, if relevant), and 3) your operating system information.
 
@@ -45,6 +68,13 @@ source .venv/bin/activate
 
 Please answer 'Y' (or just press enter), N is provided as an alternative flow but isn't currently maintained.
 
+### Select your Swarm
+
+To select your swarm, answer 'B' to join the Math Hard (DAPO-Math 17K dataset) or 'S' to join the Math (GSM8K dataset). 
+
+### Select your Model
+
+To select your model, answer '0.5', '1.5', '7', '32', or '72' to pick the parameter count. 
 
 ### Login
 
@@ -54,11 +84,11 @@ Please answer 'Y' (or just press enter), N is provided as an alternative flow bu
 
 ### Huggingface
 
-Optionally pair your HF account by using your HF token - [more here](https://huggingface.co/docs/hub/en/security-tokens).
+If you would like to upload your model to Hugging Face, enter your Hugging Face access token when prompted. You can generate one from your Hugging Face account, under [Access Tokens](https://huggingface.co/docs/hub/en/security-tokens).
 
 ### Initial peering and training
 
-From this stage onward your device will be used to train a hyperscale machine learning system. You should see your peer register and vote on-chain [here](https://gensyn-testnet.explorer.alchemy.com/address/0x2fC68a233EF9E9509f034DD551FF90A79a0B8F82?tab=logs).
+From this stage onward your device will begin training. You should see your peer register and vote on-chain [here](https://gensyn-testnet.explorer.alchemy.com/address/0x2fC68a233EF9E9509f034DD551FF90A79a0B8F82?tab=logs).
 
 
 ## Identity management
@@ -67,9 +97,9 @@ From this stage onward your device will be used to train a hyperscale machine le
 
 On-chain identity is managed via an Alchemy modal sign-in screen. You need to supply an email address or login via a supported method (e.g. Google). This creates an EOA public/private key (which are stored by Alchemy). You will also receive local session keys in the `userApiKey`. Note that these aren't your EOA public/private keys. 
 
-During the initial set-up process, you will also create a `swarm.pem` file which maintains the identity of your peer. This is then registered on chain using the EOA wallet hosted in Alchemy, triggered using your local api keys. This links the `email address` (and corresponding EOA in Alchemy) + `swarm.pem` forever and they are both effectively burned if one is lost.
+During the initial set-up process, you will also create a `swarm.pem` file which maintains the identity of your peer. This is then registered on chain using the EOA wallet hosted in Alchemy, triggered using your local api keys. This links the `swarm.pem` to the `email address` (and corresponding EOA in Alchemy).
 
-If you are running multiple nodes, and want to track progress on-chain (i.e. not just run RL Swarm itself and train a model), you must sign up again for each node - do not use the same `swarm.pem`, `userApiKey`, `userData.json`, `email address`, or copy the data between the nodes. If you do so, your progress won't be tracked on-chain. If you do any of these things, your node will work fine and train from the swarm however, but this will not be reflected on chain.
+**If you want to link multiple nodes to a single EOA**, simply sign up each node using the same email address. You will get a new peer ID for each node, however they will all be linked to the same EOA that your email is linked to.
 
 **Please note**: if you are using a fork of this repo, or a service organised by someone else (e.g. a 'one click deployment' provider) the identity management flow below is not guaranteed.
 
@@ -81,14 +111,12 @@ In the following two scenarios, everything will work (i.e. you will have an on-c
 
 In the following two scenarios, it will not work (i.e. you won't have an on-chain identity linked with your RL Swarm peer training):
 
-- If you lose your original `swarm.pem` and create another one but try to link it to a previously used `email address`.
 - If you keep your `swarm.pem` and try to link it to an `email address` distinct from the one with which it was first registered.
 
 Therefore, you should do these actions in the following scenarios
 
-- **Signed up with `email address`, generated `swarm.pem`, BUT lost `swarm.pem`**: run from scratch again with a new email address (you can use the `gmail +` notation for this).
-- **Signed up with `email address`, generated `swarm.pem`, kept `swarm.pem`** -> you can re-run a single node using this pair if you've still got them both but not multiple.
-- **You want to run multiple nodes at once**: run them all from scratch with different email addresses and generate new `swarm.pem`s for them all (i.e. do not share email address or `swarm.pem` between different running instances).
+- **Signed up with `email address`, generated `swarm.pem`, BUT lost `swarm.pem`** OR **You want to run multiple nodes at once**: run from scratch with the same email address and generate a new `swarm.pem`. 
+- **Signed up with `email address`, generated `swarm.pem`, kept `swarm.pem`** -> you can re-run a single node using this pair if you've still got them both.
 
 ## Troubleshooting
 
@@ -116,7 +144,7 @@ Therefore, you should do these actions in the following scenarios
 
 - **Issues on VMs/VPSs?**
 
-    - **How do I access the login screen if I'm running in a VM?**: port forwarding. Add this SSH flag: `-L 3000:localhost:3000` when connecting to your VM. E.g. `gcloud compute ssh --zone "us-central1-a" [your-vm] --project [your-project] -- -L 3000:localhost:3000`. Note, some VPSs may not work with `rl-swarm`. Check the Gensyn [discord](https://discord.gg/zAJbCTk9) for up-to-date information on this.
+    - **How do I access the login screen if I'm running in a VM?**: port forwarding. Add this SSH flag: `-L 3000:localhost:3000` when connecting to your VM. E.g. `gcloud compute ssh --zone "us-central1-a" [your-vm] --project [your-project] -- -L 3000:localhost:3000`. Note, some VPSs may not work with `rl-swarm`. Check the Gensyn [discord](https://discord.gg/AdnyWNzXh5) for up-to-date information on this.
     
     - **Disconnection/general issues**: If you are tunneling to a VM and suffer a broken pipe, you will likely encounter OOM or unexepected behaviour the first time you relaunch the script. If you `control + c` and kill the script it should spin down all background processes. Restart the script and everything should work normally.
 
@@ -145,8 +173,3 @@ Therefore, you should do these actions in the following scenarios
     - Use floating point 32 instead of bfloat16 to train your model. This can be changed in the config for your device, i.e. `./hivemind_exp/configs/<directory_relevant_to_your_device>/grpo-qwen-2.5-0.5b-deepseek-r1.yaml`.
 
 - **How can I optimsie `rl-swarm` for my device**? open the `hivemind_exp/configs/gpu/grpo-qwen-2.5-0.5b-deepseek-r1.yaml`. Note that this is for the gpu and not cpu configuration. You can then edit parameters that optimsie the training run. For example, try adjusting the `vllm_gpu_memory_utilization`. Note that optimal settings will vary by device.
-
-## Swarm UI
-To launch the Swarm UI, run `docker-compose up --build` and open `0.0.0.0:8080` in your browser.
-
-See the [web/README](./web/README.md) for more details.
