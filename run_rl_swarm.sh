@@ -81,21 +81,13 @@ cat << "EOF"
 EOF
 
 # 直接设置CONNECT_TO_TESTNET为True，不再询问
-CONNECT_TO_TESTNET=True
+CONNECT_TO_TESTNET=true
 
 # 设置swarm合约地址
 SWARM_CONTRACT="$SMALL_SWARM_CONTRACT"
 
-while true; do
-    echo -en $GREEN_TEXT
-    read -p ">> How many parameters (in billions)? [0.5, 1.5, 7, 32, 72] " pc
-    echo -en $RESET_TEXT
-    pc=${pc:-0.5}  # Default to "0.5" if the user presses Enter
-    case $pc in
-        0.5 | 1.5 | 7 | 32 | 72) PARAM_B=$pc && break ;;
-        *)  echo ">>> Please answer in [0.5, 1.5, 7, 32, 72]." ;;
-    esac
-done
+# 直接设置参数为7
+PARAM_B=7
 
 if [ "$CONNECT_TO_TESTNET" = true ]; then
     # Run modal_login server.
