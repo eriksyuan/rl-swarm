@@ -256,8 +256,35 @@ export MODEL_NAME="Gensyn/Qwen2.5-0.5B-Instruct"
 echo_green ">> Good luck in the swarm!"
 echo_blue ">> And remember to star the repo on GitHub! --> https://github.com/gensyn-ai/rl-swarm"
 
-python "$ROOT/genrl-swarm/src/genrl_swarm/runner/swarm_launcher.py" \
-    --config-path "$ROOT/configs" \
-    --config-name "rg-swarm.yaml" 
+# 自动重启配置
+RETRY_INTERVAL=${RETRY_INTERVAL:-10}    # 重试间隔秒数，默认10秒
+RETRY_COUNT=0
 
-wait  # Keep script running until Ctrl+C
+# 启动函数
+start_swarm() {
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo_green ">> Starting RL Swarm (attempt $RETRY_COUNT)..."
+    python "$ROOT/genrl-swarm/src/genrl_swarm/runner/swarm_launcher.py" \
+        --config-path "$ROOT/configs" \
+        --config-name "rg-swarm.yaml"
+}
+
+# 主循环 - 永远重启功能
+while true; do
+    start_swarm
+    EXIT_CODE=$?
+    
+    if [ $EXIT_CODE -eq 0 ]; then
+        echo_green ">> RL Swarm completed successfully."
+        break
+    elif [ $EXIT_CODE -eq 130 ]; then
+        # Ctrl+C (SIGINT) - 用户主动退出
+        echo_green ">> RL Swarm stopped by user."
+        break
+    else
+        # 其他错误代码 - 永远重启
+        echo_red ">> RL Swarm crashed with exit code $EXIT_CODE"
+        echo_blue ">> Restarting in $RETRY_INTERVAL seconds..."
+        sleep $RETRY_INTERVAL
+    fi
+done
