@@ -80,7 +80,8 @@ errnotify() {
     echo_red ">> An error was detected while running rl-swarm. See $ROOT/logs for full logs."
 }
 
-trap cleanup EXIT
+# 只在收到中断信号时清理，不在普通退出时清理
+trap cleanup SIGINT SIGTERM
 trap errnotify ERR
 
 echo -e "\033[38;5;224m"
@@ -276,11 +277,13 @@ while true; do
     
     if [ $EXIT_CODE -eq 0 ]; then
         echo_green ">> RL Swarm completed successfully."
-        break
+        cleanup
+        exit 0
     elif [ $EXIT_CODE -eq 130 ]; then
         # Ctrl+C (SIGINT) - 用户主动退出
         echo_green ">> RL Swarm stopped by user."
-        break
+        cleanup
+        exit 0
     else
         # 其他错误代码 - 永远重启
         echo_red ">> RL Swarm crashed with exit code $EXIT_CODE"
