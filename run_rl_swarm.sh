@@ -80,8 +80,7 @@ errnotify() {
     echo_red ">> An error was detected while running rl-swarm. See $ROOT/logs for full logs."
 }
 
-# 只在收到中断信号时清理，不在普通退出时清理
-trap cleanup SIGINT SIGTERM
+trap cleanup EXIT
 trap errnotify ERR
 
 echo -e "\033[38;5;224m"
@@ -247,47 +246,38 @@ fi
 
 echo_green ">> Done!"
 
-export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+HF_TOKEN="None"
+if [ -n "${HF_TOKEN}" ]; then # Check if HF_TOKEN is already set and use if so. Else give user a prompt to choose.
+    HUGGINGFACE_ACCESS_TOKEN=${HF_TOKEN}
+else
+    echo -en $GREEN_TEXT
+    read -p ">> Would you like to push models you train in the RL swarm to the Hugging Face Hub? [y/N] " yn
+    echo -en $RESET_TEXT
+    yn=${yn:-N} # Default to "N" if the user presses Enter
+    case $yn in
+        [Yy]*) read -p "Enter your Hugging Face access token: " HUGGINGFACE_ACCESS_TOKEN ;;
+        [Nn]*) HUGGINGFACE_ACCESS_TOKEN="None" ;;
+        *) echo ">>> No answer was given, so NO models will be pushed to Hugging Face Hub" && HUGGINGFACE_ACCESS_TOKEN="None" ;;
+    esac
+fi
 
 echo -en $GREEN_TEXT
+MODEL_NAME="Gensyn/Qwen2.5-0.5B-Instruct"
 echo -en $RESET_TEXT
 
-export MODEL_NAME="Gensyn/Qwen2.5-0.5B-Instruct"
+# Only export MODEL_NAME if user provided a non-empty value
+if [ -n "$MODEL_NAME" ]; then
+    export MODEL_NAME
+    echo_green ">> Using model: $MODEL_NAME"
+else
+    echo_green ">> Using default model from config"
+fi
 
 echo_green ">> Good luck in the swarm!"
 echo_blue ">> And remember to star the repo on GitHub! --> https://github.com/gensyn-ai/rl-swarm"
 
-# 自动重启配置
-RETRY_INTERVAL=${RETRY_INTERVAL:-10}    # 重试间隔秒数，默认10秒
-RETRY_COUNT=0
+python "$ROOT/genrl-swarm/src/genrl_swarm/runner/swarm_launcher.py" \
+    --config-path "$ROOT/configs" \
+    --config-name "rg-swarm.yaml" 
 
-# 启动函数
-start_swarm() {
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    echo_green ">> Starting RL Swarm (attempt $RETRY_COUNT)..."
-    python "$ROOT/genrl-swarm/src/genrl_swarm/runner/swarm_launcher.py" \
-        --config-path "$ROOT/configs" \
-        --config-name "rg-swarm.yaml"
-}
-
-# 主循环 - 永远重启功能
-while true; do
-    start_swarm
-    EXIT_CODE=$?
-    
-    if [ $EXIT_CODE -eq 0 ]; then
-        echo_green ">> RL Swarm completed successfully."
-        cleanup
-        exit 0
-    elif [ $EXIT_CODE -eq 130 ]; then
-        # Ctrl+C (SIGINT) - 用户主动退出
-        echo_green ">> RL Swarm stopped by user."
-        cleanup
-        exit 0
-    else
-        # 其他错误代码 - 永远重启
-        echo_red ">> RL Swarm crashed with exit code $EXIT_CODE"
-        echo_blue ">> Restarting in $RETRY_INTERVAL seconds..."
-        sleep $RETRY_INTERVAL
-    fi
-done
+wait  # Keep script running until Ctrl+C
