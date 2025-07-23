@@ -61,6 +61,28 @@ game_manager:
       _target_: trl.trainer.GRPOConfig
       logging_dir: ${log_dir}
       fp16: ${training.fp16}
+      temperature: 1.0
+      top_p: 1.0
+      top_k: null
+      min_p: null
+      repetition_penalty: 1.0
+      max_completion_length: 256
+      max_prompt_length: 512
+      num_generations: 8
+      epsilon: 0.2
+      epsilon_high: null
+      beta: 0.0
+      num_iterations: 1
+      loss_type: "bnpo"
+      scale_rewards: true
+      mask_truncated_completions: false
+      sync_ref_model: false
+      ref_model_mixup_alpha: 0.6
+      ref_model_sync_steps: 512
+      use_liger_loss: false
+      log_completions: false
+      num_completions_to_print: null
+      wandb_log_unique_prompts: false
     log_with: wandb
     log_dir: ${log_dir}
     epsilon: 0.2
