@@ -15,6 +15,7 @@ export ORG_ID
 export HF_HUB_DOWNLOAD_TIMEOUT=120  # 2 minutes
 export SWARM_CONTRACT="0xFaD7C5e93f28257429569B854151A1B8DCD404c2"
 export HUGGINGFACE_ACCESS_TOKEN="None"
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
 
 # Path to an RSA private key. If this path does not exist, a new key pair will be created.
 # Remove this file if you want a new PeerID.
@@ -242,8 +243,10 @@ else
 fi
 
 echo -en $GREEN_TEXT
-MODEL_NAME="Gensyn/Qwen2.5-0.5B-Instruct"
+read -p ">> Enter the name of the model you want to use in huggingface repo/name format, or press [Enter] to use the default model. " MODEL_NAME
 echo -en $RESET_TEXT
+
+export MODEL_NAME = "Gensyn/Qwen2.5-0.5B-Instruct"
 
 # Only export MODEL_NAME if user provided a non-empty value
 if [ -n "$MODEL_NAME" ]; then
